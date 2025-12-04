@@ -1,0 +1,16 @@
+# Core dependencies
+# py-clob-client>=0.1.0  # Optional - install separately if needed
+# Note: The code works in mock mode without this package
+
+# Async utilities
+aiohttp>=3.9.0
+
+# Type checking (optional)
+typing-extensions>=4.8.0
+
+# Logging and utilities
+python-dotenv>=1.0.0
+
+# Database
+supabase>=2.0.0
+

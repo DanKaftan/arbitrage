@@ -1,4 +1,4 @@
-"""Execution layer wrapping py_clob_client for Polymarket operations."""
+"""Polymarket service wrapping py_clob_client for Polymarket operations."""
 
 import asyncio
 import logging
@@ -28,16 +28,16 @@ except ImportError as e:
 from config import ExecutionConfig
 
 
-class ExecutionError(Exception):
-    """Exception raised by execution layer."""
+class PolymarketServiceError(Exception):
+    """Exception raised by Polymarket service."""
     pass
 
 
-class ExecutionLayer:
-    """Wrapper around py_clob_client for async execution operations."""
+class PolymarketService:
+    """Service for interacting with Polymarket API via py_clob_client."""
     
     def __init__(self, config: ExecutionConfig):
-        """Initialize execution layer with config."""
+        """Initialize Polymarket service with config."""
         self.config = config
         self.client: Optional[ClobClient] = None
         self._initialize_client()
@@ -100,7 +100,7 @@ class ExecutionLayer:
                 logger.warning("⚠️ Order submission may fail, but read operations (orderbook) should still work")
                 logger.debug(f"API credentials error details: {type(creds_error).__name__}: {creds_error}")
             
-            logger.info(f"✅ Execution layer initialized successfully - REAL TRADING MODE (host: {host})")
+            logger.info(f"✅ Polymarket service initialized successfully - REAL TRADING MODE (host: {host})")
         except Exception as e:
             logger.error(f"❌ Failed to initialize CLOB client: {e}")
             logger.error("Falling back to mock mode. Check your API credentials and private key.")
@@ -137,7 +137,7 @@ class ExecutionLayer:
                 else:
                     logger.error(f"Operation failed after {self.config.max_retries} attempts: {e}")
         
-        raise ExecutionError(f"Operation failed: {last_exception}")
+        raise PolymarketServiceError(f"Operation failed: {last_exception}")
     
     async def get_orderbook(self, token_id: str) -> Dict:
         """Fetch orderbook for a token.
@@ -219,7 +219,7 @@ class ExecutionLayer:
             return orderbook
         except Exception as e:
             logger.error(f"Failed to fetch orderbook for token {token_id}: {e}")
-            raise ExecutionError(f"Orderbook fetch failed: {e}")
+            raise PolymarketServiceError(f"Orderbook fetch failed: {e}")
     
     async def submit_limit(
         self,
@@ -243,7 +243,7 @@ class ExecutionLayer:
             # This matches the successful implementation
             
             if not CLOB_AVAILABLE or OrderArgs is None or OrderType is None or BUY is None or SELL is None:
-                raise ExecutionError("py_clob_client not properly imported")
+                raise PolymarketServiceError("py_clob_client not properly imported")
             
             # Determine side constant (BUY or SELL from py_clob_client)
             order_side = BUY if side.upper() == "BUY" else SELL
@@ -313,7 +313,7 @@ class ExecutionLayer:
             return str(order_id)
         except Exception as e:
             logger.error(f"Failed to submit {side} order: {e}")
-            raise ExecutionError(f"Order submission failed: {e}")
+            raise PolymarketServiceError(f"Order submission failed: {e}")
     
     async def get_order_status(self, order_id: str) -> Dict:
         """Get status of an order."""
@@ -366,7 +366,7 @@ class ExecutionLayer:
             return status
         except Exception as e:
             logger.error(f"Failed to get order status for {order_id}: {e}")
-            raise ExecutionError(f"Order status fetch failed: {e}")
+            raise PolymarketServiceError(f"Order status fetch failed: {e}")
     
     async def cancel(self, order_id: str) -> bool:
         """Cancel an order."""
@@ -389,7 +389,7 @@ class ExecutionLayer:
             return result
         except Exception as e:
             logger.error(f"Failed to cancel order {order_id}: {e}")
-            raise ExecutionError(f"Order cancellation failed: {e}")
+            raise PolymarketServiceError(f"Order cancellation failed: {e}")
     
     async def get_market_position(self, token_id: str) -> float:
         """Get position size for a specific token directly from Polymarket Data API.
@@ -557,4 +557,3 @@ class ExecutionLayer:
         except Exception as e:
             logger.warning(f"Failed to get my open orders for token {token_id}: {e}")
             return []
-

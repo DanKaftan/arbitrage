@@ -217,11 +217,11 @@ The bot logs to stdout with timestamps. Log levels:
 
 To test individual components:
 ```python
-from trading.execution import ExecutionLayer
+from services import PolymarketService
 from config import ExecutionConfig
 
 config = ExecutionConfig(api_key="...", api_secret="...")
-execution = ExecutionLayer(config)
+polymarket_service = PolymarketService(config)
 ```
 
 ## Future Enhancements

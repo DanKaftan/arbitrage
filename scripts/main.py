@@ -21,8 +21,8 @@ from config import (
     load_supabase_config,
     get_supabase_config,  # Legacy, for backward compatibility
 )
-from trading import ExecutionLayer, TraderManager
-from services import SupabaseService
+from trading import TraderManager
+from services import SupabaseService, PolymarketService
 
 
 # Configure logging
@@ -111,9 +111,9 @@ async def main():
                 "Running in mock mode."
             )
         
-        # Initialize execution layer
-        logger.info("Initializing execution layer...")
-        execution_layer = ExecutionLayer(execution_config)
+        # Initialize Polymarket service
+        logger.info("Initializing Polymarket service...")
+        execution_layer = PolymarketService(execution_config)
         
         # Initialize manager with Supabase service
         logger.info("Initializing trader manager...")

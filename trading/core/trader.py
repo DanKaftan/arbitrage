@@ -5,7 +5,7 @@ import asyncio
 from dataclasses import dataclass
 from typing import Dict, Optional, Any, List
 
-from .execution import ExecutionLayer, ExecutionError
+from services import PolymarketService, PolymarketServiceError
 from config import TraderConfig
 
 logger = logging.getLogger(__name__)
@@ -56,7 +56,7 @@ class Trader:
         self,
         market_id: str,
         config: TraderConfig,
-        execution_layer: ExecutionLayer,
+        execution_layer: PolymarketService,
         supabase_service: Optional[Any] = None,  # SupabaseService, avoiding circular import
     ):
         self.market_id = market_id
@@ -114,8 +114,8 @@ class Trader:
             await self._handle_sell_logic(market, balance)
             await self._handle_buy_logic(market, balance, spread_cents)
             
-        except ExecutionError as e:
-            logger.error(f"Trader {self.market_id} execution error: {e}")
+        except PolymarketServiceError as e:
+            logger.error(f"Trader {self.market_id} Polymarket service error: {e}")
         except Exception as e:
             logger.error(f"Trader {self.market_id} error: {e}", exc_info=True)
     

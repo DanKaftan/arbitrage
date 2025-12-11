@@ -7,7 +7,7 @@ from typing import Dict, Optional, Any
 from datetime import datetime
 
 from .trader import Trader
-from .execution import ExecutionLayer
+from services import PolymarketService
 from config import TraderConfig, ManagerConfig
 
 
@@ -19,14 +19,14 @@ class TraderManager:
     
     def __init__(
         self,
-        execution_layer: ExecutionLayer,
+        execution_layer: PolymarketService,
         config: ManagerConfig,
         supabase_service: Optional[Any] = None,  # SupabaseService, avoiding circular import
     ):
         """Initialize manager with execution layer and config.
         
         Args:
-            execution_layer: Execution layer for order operations
+            execution_layer: Polymarket service for order operations
             config: Manager configuration
             supabase_service: Optional Supabase service for trader persistence
         """

@@ -1,6 +1,7 @@
 # Core dependencies
 # py-clob-client>=0.1.0  # Optional - install separately if needed
 # Note: The code works in mock mode without this package
+# If using real trading, install: pip install py-clob-client
 
 # Async utilities
 aiohttp>=3.9.0
@@ -13,4 +14,7 @@ python-dotenv>=1.0.0
 
 # Database
 supabase>=2.0.0
+
+# HTTP client for API requests
+httpx>=0.24.0
 

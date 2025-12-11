@@ -75,9 +75,9 @@ class TraderConfig:
     token_id: str = ""  # Token ID for YES outcome (for API calls - required for orderbook/orders)
     market_slug: str = ""  # Market slug (e.g., "russia-x-ukraine-ceasefire-in-2025")
     name: str = ""  # Friendly name for the trader (defaults to market_id if not provided)
-    budget: float = 10.0  # Max capital in dollars (total amount trader can spend)
-    min_gap: float = 1  # Minimum spread threshold in cents
-    price_improvement: float = 1  # Price improvement in cents
+    max_inventory: float = 100.0  # Max shares trader can hold (replaces budget)
+    spread_threshold: float = 1.0  # Minimum spread in cents required to place BUY orders (replaces min_gap)
+    price_improvement: float = 1.0  # Price improvement in cents
     max_retries: int = 3
     retry_delay_seconds: float = 1.0
 
@@ -90,7 +90,6 @@ class ManagerConfig:
     Values are loaded from environment variables (see load_manager_config() below).
     """
     poll_interval_seconds: float = 3.0  # From MANAGER_POLL_INTERVAL in .env
-    max_total_exposure: float = 10000.0  # From MANAGER_MAX_EXPOSURE in .env
     max_total_pnl_loss: float = -1000.0  # From MANAGER_MAX_PNL_LOSS in .env
     status_update_interval_seconds: float = 5.0  # From MANAGER_STATUS_INTERVAL in .env
     supabase_sync_interval_seconds: float = 30.0  # From MANAGER_SUPABASE_SYNC_INTERVAL in .env
@@ -123,7 +122,6 @@ def load_manager_config() -> ManagerConfig:
     """Load manager config from environment variables."""
     return ManagerConfig(
         poll_interval_seconds=float(os.getenv("MANAGER_POLL_INTERVAL", "1.0")),
-        max_total_exposure=float(os.getenv("MANAGER_MAX_EXPOSURE", "10000.0")),
         max_total_pnl_loss=float(os.getenv("MANAGER_MAX_PNL_LOSS", "-1000.0")),
         status_update_interval_seconds=float(os.getenv("MANAGER_STATUS_INTERVAL", "5.0")),
         supabase_sync_interval_seconds=float(os.getenv("MANAGER_SUPABASE_SYNC_INTERVAL", "30.0")),
@@ -165,10 +163,9 @@ def load_default_trader_configs() -> List[TraderConfig]:
             market_id=market,  # Will be resolved from slug if needed
             market_slug=market,  # Assume it's a slug initially
             name=names[idx] if idx < len(names) else "",
-            budget=budgets[idx] if idx < len(budgets) else float(os.getenv("TRADER_DEFAULT_BUDGET", "1000.0")),
-            min_gap=min_gaps[idx] if idx < len(min_gaps) else float(os.getenv("TRADER_DEFAULT_MIN_GAP", "0.01")),
-            price_improvement=float(os.getenv("TRADER_DEFAULT_PRICE_IMPROVEMENT", "0.001")),
-            order_timeout_seconds=int(os.getenv("TRADER_DEFAULT_TIMEOUT", "30")),
+            max_inventory=budgets[idx] if idx < len(budgets) else float(os.getenv("TRADER_DEFAULT_MAX_INVENTORY", "100.0")),
+            spread_threshold=min_gaps[idx] if idx < len(min_gaps) else float(os.getenv("TRADER_DEFAULT_SPREAD_THRESHOLD", "1.0")),
+            price_improvement=float(os.getenv("TRADER_DEFAULT_PRICE_IMPROVEMENT", "1.0")),
         ))
     
     return configs

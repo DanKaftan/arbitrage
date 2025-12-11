@@ -1,0 +1,33 @@
+# Ignore virtual environment
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Ignore logs (they'll be created at runtime)
+logs/*.log
+
+# Ignore IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Ignore OS files
+.DS_Store
+Thumbs.db
+
+# Ignore git
+.git/
+.gitignore
+
+# Ignore environment files (use Render environment variables instead)
+.env
+.env.local
+.env.*.local
+
+# Ignore documentation (optional, can be included)
+# docs/
+

@@ -495,4 +495,66 @@ class ExecutionLayer:
             logger.warning(f"Failed to get position for token {token_id} from API: {e}")
             # Fall back to 0.0 - trader will rely on self-tracking
         return 0.0
+    
+    async def get_my_open_orders(self, token_id: str) -> List[Dict]:
+        """Get my open orders for a specific token.
+        
+        Uses Polymarket's get_orders API to fetch all open orders and filters by token_id.
+        
+        Args:
+            token_id: Token ID to filter orders for
+            
+        Returns:
+            List of order dicts with: id, side, price, size, etc.
+        """
+        if self.client is None:
+            logger.debug(f"get_my_open_orders for token {token_id} - client not available, returning empty list")
+            return []
+        
+        try:
+            from py_clob_client.clob_types import OpenOrderParams
+            
+            async def _fetch():
+                # Fetch all open orders
+                open_orders = await asyncio.to_thread(self.client.get_orders, OpenOrderParams())
+                
+                # Convert to list of dicts if needed
+                orders_list = []
+                if open_orders:
+                    for order in open_orders:
+                        # Convert order object to dict if needed
+                        if not isinstance(order, dict):
+                            if hasattr(order, "__dict__"):
+                                order = order.__dict__
+                            else:
+                                # Try to extract common fields
+                                order = {
+                                    "id": getattr(order, "id", None) or getattr(order, "orderID", None),
+                                    "token_id": getattr(order, "token_id", None) or getattr(order, "tokenId", None),
+                                    "side": getattr(order, "side", None),
+                                    "price": getattr(order, "price", None),
+                                    "size": getattr(order, "size", None) or getattr(order, "original_size", None),
+                                }
+                        
+                        # Filter by token_id
+                        order_token_id = (
+                            order.get("token_id") or 
+                            order.get("tokenId") or 
+                            order.get("token")
+                        )
+                        
+                        # Normalize token IDs for comparison (case-insensitive)
+                        if order_token_id and token_id:
+                            if order_token_id.lower().strip() == token_id.lower().strip():
+                                orders_list.append(order)
+                
+                return orders_list
+            
+            orders = await self._retry_operation(_fetch)
+            logger.debug(f"Found {len(orders)} open orders for token {token_id[:20]}...")
+            return orders
+            
+        except Exception as e:
+            logger.warning(f"Failed to get my open orders for token {token_id}: {e}")
+            return []
 

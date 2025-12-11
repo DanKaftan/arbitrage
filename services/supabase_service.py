@@ -422,8 +422,8 @@ class SupabaseService:
         
         return {
             "market_slug": config.market_slug or "",
-            "budget": config.budget,
-            "min_gap": config.min_gap,
+            "max_inventory": config.max_inventory,
+            "spread_threshold": config.spread_threshold,
             "price_improvement": config.price_improvement,
             "status": status,
             "updated_at": datetime.utcnow().isoformat(),

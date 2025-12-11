@@ -129,7 +129,7 @@ async def main():
             manager.add_trader(trader_config)
             logger.info(
                 f"  Added trader for market {trader_config.market_id} "
-                f"(budget={trader_config.budget}, min_gap={trader_config.min_gap})"
+                f"(max_inventory={trader_config.max_inventory}, spread_threshold={trader_config.spread_threshold}¢)"
             )
         
         # Start the manager

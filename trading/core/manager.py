@@ -217,27 +217,19 @@ class TraderManager:
         logger.info("All traders resumed")
     
     async def _monitor_risk(self) -> bool:
-        """Monitor global risk and return True if safe to continue."""
+        """Monitor global risk and return True if safe to continue.
+        
+        Only checks P&L loss limit for emergency shutdown.
+        Each trader manages its own budget independently.
+        """
         try:
-            # Calculate total exposure
-            total_exposure = 0.0
             total_pnl = 0.0
             
             for trader in self.traders.values():
-                status = trader.get_status()
-                total_exposure += abs(status["position"])
-                total_pnl += status["total_pnl"]
+                status = await trader.get_status()
+                total_pnl += status.get("total_pnl", 0.0)
             
-            # Check exposure limit
-            if total_exposure > self.config.max_total_exposure:
-                logger.warning(
-                    f"Total exposure {total_exposure:.2f} exceeds limit "
-                    f"{self.config.max_total_exposure:.2f}"
-                )
-                if self.config.enable_emergency_shutdown:
-                    return False
-            
-            # Check P&L loss limit
+            # Check P&L loss limit - shutdown only for severe losses
             if total_pnl < self.config.max_total_pnl_loss:
                 logger.error(
                     f"Total P&L {total_pnl:.2f} below loss threshold "
@@ -280,7 +272,7 @@ class TraderManager:
         total_trades = 0
         
         for trader in self.traders.values():
-            status = trader.get_status()
+            status = await trader.get_status()
             total_exposure_shares += abs(status["position"])
             total_exposure_dollars += status.get("position_value", 0.0)
             total_pnl += status["total_pnl"]
@@ -318,9 +310,9 @@ class TraderManager:
                 f"Market: {status['market_slug'][:30]:<30}"
             )
             # Get budget info
-            budget = status.get('budget', 0.0)
-            capital_used = status.get('capital_used', 0.0)
-            available_budget = status.get('available_budget', 0.0)
+            max_inventory = status.get('max_inventory', 0.0)
+            balance = status.get('balance', 0.0)
+            current_inventory = status.get('position', 0.0)
             
             # Calculate position display (shares and dollars)
             position_shares = status['position']
@@ -334,9 +326,8 @@ class TraderManager:
                 f"Trades: {status['total_trades']:>4}"
             )
             status_lines.append(
-                f"    Budget: ${budget:>7.2f} | "
-                f"Used: ${capital_used:>7.2f} | "
-                f"Available: ${available_budget:>7.2f}"
+                f"    Max Inventory: {max_inventory:>7.0f} shares | "
+                f"Current: {current_inventory:>7.2f} | Balance: {balance:>7.2f}"
             )
             # Show prices in both decimal and percentage format
             best_bid_pct = f"({float(best_bid_str)*100:.2f}%)" if best_bid_str != "N/A" else ""
@@ -356,11 +347,11 @@ class TraderManager:
                 min_order_size = status.get('min_order_size', 0)
                 min_order_value_buy = status.get('min_order_value_buy')
                 min_order_value_sell = status.get('min_order_value_sell')
-                min_gap_cents = status.get('min_gap_cents', 0)
+                spread_threshold = status.get('spread_threshold', 0)
                 
                 decision_lines = []
                 decision_lines.append(f"    Market Requirements:")
-                decision_lines.append(f"      Min gap: {min_gap_cents:.2f}¢ | Min order: {min_order_size:.0f} shares")
+                decision_lines.append(f"      Spread threshold: {spread_threshold:.2f}¢ | Min order: {min_order_size:.0f} shares")
                 if min_order_value_buy is not None:
                     decision_lines.append(f"      BUY minimum: ${min_order_value_buy:.2f} | SELL minimum: ${min_order_value_sell:.2f}")
                 
@@ -369,18 +360,26 @@ class TraderManager:
                 sell_reason = []
                 
                 # BUY order reasoning
-                if status.get('active_buy_order_id'):
+                order_details = status.get('order_details', [])
+                has_buy_order = any(o.get('side') == 'BUY' for o in order_details)
+                
+                if has_buy_order:
                     buy_reason.append("✅ BUY order active")
                 else:
-                    if status.get('spread_cents', 0) < min_gap_cents:
-                        buy_reason.append(f"❌ Spread {status.get('spread_cents', 0):.2f}¢ < min gap {min_gap_cents:.2f}¢")
-                    if available_budget < (min_order_value_buy or 0):
-                        buy_reason.append(f"❌ Budget ${available_budget:.2f} < BUY min ${min_order_value_buy:.2f}")
+                    spread_cents = status.get('spread_cents', 0)
+                    price_improvement = status.get('price_improvement', 0)
+                    effective_spread = spread_cents - price_improvement if spread_cents else 0
+                    if effective_spread < spread_threshold:
+                        buy_reason.append(f"❌ Effective spread {effective_spread:.2f}¢ < threshold {spread_threshold:.2f}¢")
+                    if balance < (min_order_size or 0):
+                        buy_reason.append(f"❌ Balance {balance:.2f} < min order size {min_order_size:.0f}")
                     if not buy_reason:
                         buy_reason.append("⏳ Evaluating...")
                 
                 # SELL order reasoning
-                if status.get('active_sell_order_id'):
+                has_sell_order = any(o.get('side') == 'SELL' for o in order_details)
+                
+                if has_sell_order:
                     sell_reason.append("✅ SELL order active")
                 else:
                     if position_shares <= 0:
@@ -461,11 +460,22 @@ class TraderManager:
         # Cancel all active orders
         logger.info("Cancelling all active orders...")
         for trader in self.traders.values():
-            for order_id in list(trader.state.active_order_ids):
-                try:
-                    await trader.execution.cancel(order_id)
-                except Exception as e:
-                    logger.error(f"Failed to cancel order {order_id}: {e}")
+            try:
+                # Fetch current status to get active order IDs
+                status = await trader.get_status()
+                order_details = status.get('order_details', [])
+                
+                for order in order_details:
+                    order_id = order.get('id')
+                    side = order.get('side')
+                    if order_id:
+                        try:
+                            await trader.execution.cancel(order_id)
+                            logger.info(f"Cancelled {side} order {order_id[:20]}...")
+                        except Exception as e:
+                            logger.error(f"Failed to cancel {side} order {order_id[:20]}...: {e}")
+            except Exception as e:
+                logger.error(f"Failed to get trader status for shutdown: {e}")
         
         logger.info("TraderManager shutdown complete")
     

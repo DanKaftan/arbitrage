@@ -1,0 +1,27 @@
+services:
+  - type: worker
+    name: trading-bot
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python scripts/main.py
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: LOG_LEVEL
+        value: INFO
+    # Environment variables should be set in Render dashboard:
+    # - POLYMARKET_API_KEY
+    # - POLYMARKET_API_SECRET
+    # - POLYMARKET_PASSPHRASE (optional)
+    # - POLYMARKET_PRIVATE_KEY (optional)
+    # - POLYMARKET_ADDRESS (optional)
+    # - POLYMARKET_CHAIN_ID (optional, default: 137)
+    # - SUPABASE_URL
+    # - SUPABASE_KEY
+    # - MANAGER_POLL_INTERVAL (optional, default: 1.0)
+    # - MANAGER_MAX_EXPOSURE (optional, default: 10000.0)
+    # - MANAGER_MAX_PNL_LOSS (optional, default: -1000.0)
+    # - MANAGER_STATUS_INTERVAL (optional, default: 5.0)
+    # - MANAGER_SUPABASE_SYNC_INTERVAL (optional, default: 30.0)
+    # - MANAGER_EMERGENCY_SHUTDOWN (optional, default: true)
+
